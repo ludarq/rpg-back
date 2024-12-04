@@ -1,41 +1,33 @@
 from flask import Flask, request, jsonify
-import requests
+import openai
+from dotenv import load_dotenv
+import os
 
-# Укажите ваш API-ключ Proxy API
-PROXY_API_KEY = "sk-RZjfDDIvjxyIG3W4jU6YDAs3ITMBfL6d"
-PROXY_API_URL = "https://api.proxyapi.ru/openai/v1/chat/completions"
+# Загружаем переменные окружения
+load_dotenv()
+PROXY_API_KEY = os.getenv("PROXY_API_KEY")
+
+openai.api_key = PROXY_API_KEY
+openai.api_base = "https://api.proxyapi.ru/openai/v1"
+
 
 app = Flask(__name__)
 
 def generate_response(prompt):
-    headers = {
-        "Authorization": f"Bearer {PROXY_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": "text-davinci-003",
-        "prompt": prompt,
-        "max_tokens": 150
-    }
-
-    # Выполняем POST-запрос к Proxy API
-    response = requests.post(PROXY_API_URL, headers=headers, json=data)
-    
-    # Проверяем статус ответа и возвращаем текст
-    if response.status_code == 200:
-        return response.json().get("choices", [{}])[0].get("text", "").strip()
-    else:
-        return f"Error: {response.status_code} - {response.text}"
+    """Функция для создания ответа на основе ввода пользователя."""
+    response = openai.Completion.create(
+        engine="text-davinci-003",  # Или модель, которую вы хотите использовать
+        prompt=prompt,
+        max_tokens=150
+    )
+    return response['choices'][0]['text'].strip()
 
 @app.route('/start_game', methods=['POST'])
 def start_game():
-    # Получаем данные из POST-запроса
+    """Обрабатывает запросы на запуск игры."""
     data = request.json
     user_prompt = "Вы начинаете приключение в таинственном лесу..."
-    
-    # Генерируем ответ через Proxy API
     ai_response = generate_response(user_prompt)
-    
     return jsonify({"message": ai_response, "game_state": "active"})
 
 if __name__ == "__main__":
